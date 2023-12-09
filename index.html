@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating and Randomly Moving Colored Cubes</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="cubeCanvas" width="400" height="400"></canvas>
+    <button onclick="downloadSTL()">Download STL</button>
+    <script>
+        const canvas = document.getElementById('cubeCanvas');
+        const context = canvas.getContext('2d');
+
+        // Array to store cubes
+        let cubes = [];
+
+        // Define edges by connecting vertices
+        const edges = [
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            [4, 5], [5, 6], [6, 7], [7, 4],
+            [0, 4], [1, 5], [2, 6], [3, 7]
+        ];
+
+        // Define colors
+        const colors = ['#ff0', '#0ff', '#0f0'];
+
+        function rotateX(vertex, angle) {
+            const y = vertex.y * Math.cos(angle) - vertex.z * Math.sin(angle);
+            const z = vertex.y * Math.sin(angle) + vertex.z * Math.cos(angle);
+            return { x: vertex.x, y, z };
+        }
+
+        function rotateY(vertex, angle) {
+            const x = vertex.x * Math.cos(angle) + vertex.z * Math.sin(angle);
+            const z = -vertex.x * Math.sin(angle) + vertex.z * Math.cos(angle);
+            return { x, y: vertex.y, z };
+        }
+
+        function drawCubes() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Rotation angles
+            const angleX = (10 * Math.PI) / 180; // 10 degrees in radians
+            const angleY = (10 * Math.PI) / 180;
+
+            // Random movement
+            const randomMoveX = Math.random() * 5 - 2.5; // Random value between -2.5 and 2.5
+            const randomMoveY = Math.random() * 5 - 2.5;
+
+            // Apply rotation and random movement to existing cubes
+            cubes.forEach(cube => {
+                cube.vertices = cube.vertices.map(vertex => rotateX(vertex, angleX));
+                cube.vertices = cube.vertices.map(vertex => rotateY(vertex, angleY));
+
+                cube.vertices.forEach(vertex => {
+                    vertex.x += randomMoveX;
+                    vertex.y += randomMoveY;
+                });
+
+                context.beginPath();
+
+                // Draw colored faces
+                edges.forEach(edge => {
+                    const startVertex = cube.vertices[edge[0]];
+                    const endVertex = cube.vertices[edge[1]];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    context.fillStyle = color;
+                    context.moveTo(startVertex.x + canvas.width / 2, startVertex.y + canvas.height / 2);
+                    context.lineTo(endVertex.x + canvas.width / 2, endVertex.y + canvas.height / 2);
+                    context.lineTo(cube.vertices[(edge[1] + 1) % cube.vertices.length].x + canvas.width / 2, cube.vertices[(edge[1] + 1) % cube.vertices.length].y + canvas.height / 2);
+                    context.lineTo(cube.vertices[(edge[0] + 1) % cube.vertices.length].x + canvas.width / 2, cube.vertices[(edge[0] + 1) % cube.vertices.length].y + canvas.height / 2);
+                    context.closePath();
+                    context.fill();
+                });
+            });
+
+            requestAnimationFrame(drawCubes);
+        }
+
+        function addCube() {
+            // Create a new cube with initial random position
+            const newCube = {
+                vertices: [
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 },
+                    { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50, z: Math.random() * 100 - 50 }
+                ]
+            };
+
+            cubes.push(newCube);
+        }
+
+        setInterval(addCube, 2000); // Add a new cube every 2 seconds
+        drawCubes(); // Start drawing the cubes
+
+        function downloadSTL() {
+            // Convert cubes data to STL format
+            const stlContent = generateSTLContent();
+            
+            // Create a Blob with the STL content
+            const blob = new Blob([stlContent], { type: 'text/plain' });
+
+            // Create a link element to trigger the download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'cubes.stl';
+
+            // Append the link to the document and trigger the download
+            document.body.appendChild(link);
+            link.click();
+
+            // Remove the link from the document
+            document.body.removeChild(link);
+        }
+
+        function generateSTLContent() {
+            // STL header
+            let stlContent = 'solid cubes\n';
+
+            // Add each cube's facets to STL content
+            cubes.forEach(cube => {
+                edges.forEach(edge => {
+                    const vertex1 = cube.vertices[edge[0]];
+                    const vertex2 = cube.vertices[edge[1]];
+                    const vertex3 = cube.vertices[(edge[1] + 1) % cube.vertices.length];
+                    const vertex4 = cube.vertices[(edge[0] + 1) % cube.vertices.length];
+
+                    stlContent += 'facet normal 0 0 0\n';
+                    stlContent += `outer loop\n`;
+                    stlContent += `  vertex ${vertex1.x} ${vertex1.y} ${vertex1.z}\n`;
+                    stlContent += `  vertex ${vertex2.x} ${vertex2.y} ${vertex2.z}\n`;
+                    stlContent += `  vertex ${vertex3.x} ${vertex3.y} ${vertex3.z}\n`;
+                    stlContent += `endloop\n`;
+                    stlContent += `endfacet\n`;
+
+                    stlContent += 'facet normal 0 0 0\n';
+                    stlContent += `outer loop\n`;
+                    stlContent += `  vertex ${vertex1.x} ${vertex1.y} ${vertex1.z}\n`;
+                    stlContent += `  vertex ${vertex3.x} ${vertex3.y} ${vertex3.z}\n`;
+                    stlContent += `  vertex ${vertex4.x} ${vertex4.y} ${vertex4.z}\n`;
+                    stlContent += `endloop\n`;
+                    stlContent += `endfacet\n`;
+                });
+            });
+
+            // STL footer
+            stlContent += 'endsolid';
+
+            return stlContent;
+        }
+    </script>
+</body>
+</html>
